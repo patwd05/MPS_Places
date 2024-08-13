@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet-search.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title>Interactive Map: Places</title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet-search.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
+        <script src="data/NumberofMPSStudentsbyResidence_1.js"></script>
+        <script src="data/MPSSchools_2.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString' || e.target.feature.geometry.type === 'MultiLineString') {
+              highlightLayer.setStyle({
+                color: '#ffff00',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: '#ffff00',
+                fillOpacity: 1
+              });
+            }
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        })
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // add class to format popup if it contains media
+		function addClassToPopupIfMedia(content, popup) {
+			var tempDiv = document.createElement('div');
+			tempDiv.innerHTML = content;
+			if (tempDiv.querySelector('td img')) {
+				popup._contentNode.classList.add('media');
+					// Delay to force the redraw
+					setTimeout(function() {
+						popup.update();
+					}, 10);
+			} else {
+				popup._contentNode.classList.remove('media');
+			}
+		}
+        var title = new L.Control({'position':'topright'});
+        title.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
+        };
+        title.update = function () {
+            this._div.innerHTML = '<h2>Interactive Map: Places</h2>';
+        };
+        title.addTo(map);
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+            if (bounds_group.getLayers().length) {
+                map.fitBounds(bounds_group.getBounds());
+            }
+        }
+        map.createPane('pane_Basemap_0');
+        map.getPane('pane_Basemap_0').style.zIndex = 400;
+        var layer_Basemap_0 = L.tileLayer('https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+            pane: 'pane_Basemap_0',
+            opacity: 1.0,
+            attribution: '<a href="https://cartodb.com/basemaps/">Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL.</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_Basemap_0;
+        map.addLayer(layer_Basemap_0);
+        function pop_NumberofMPSStudentsbyResidence_1(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['SOURCE_ID'] !== null ? autolinker.link(feature.properties['SOURCE_ID'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['JOIN_COUNT'] !== null ? autolinker.link(feature.properties['JOIN_COUNT'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Shape_Leng'] !== null ? autolinker.link(feature.properties['Shape_Leng'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Shape_Area'] !== null ? autolinker.link(feature.properties['Shape_Area'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['GiZScore'] !== null ? autolinker.link(feature.properties['GiZScore'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['GiPValue'] !== null ? autolinker.link(feature.properties['GiPValue'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['NNeighbors'] !== null ? autolinker.link(feature.properties['NNeighbors'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Gi_Bin'] !== null ? autolinker.link(feature.properties['Gi_Bin'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_NumberofMPSStudentsbyResidence_1_0(feature) {
+            if (feature.properties['JOIN_COUNT'] >= 0.000000 && feature.properties['JOIN_COUNT'] <= 7.000000 ) {
+                return {
+                pane: 'pane_NumberofMPSStudentsbyResidence_1',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(252,251,253,1.0)',
+                interactive: false,
+            }
+            }
+            if (feature.properties['JOIN_COUNT'] >= 7.000000 && feature.properties['JOIN_COUNT'] <= 21.000000 ) {
+                return {
+                pane: 'pane_NumberofMPSStudentsbyResidence_1',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(220,220,236,1.0)',
+                interactive: false,
+            }
+            }
+            if (feature.properties['JOIN_COUNT'] >= 21.000000 && feature.properties['JOIN_COUNT'] <= 38.000000 ) {
+                return {
+                pane: 'pane_NumberofMPSStudentsbyResidence_1',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(163,160,203,1.0)',
+                interactive: false,
+            }
+            }
+            if (feature.properties['JOIN_COUNT'] >= 38.000000 && feature.properties['JOIN_COUNT'] <= 62.000000 ) {
+                return {
+                pane: 'pane_NumberofMPSStudentsbyResidence_1',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(106,81,163,1.0)',
+                interactive: false,
+            }
+            }
+            if (feature.properties['JOIN_COUNT'] >= 62.000000 && feature.properties['JOIN_COUNT'] <= 137.000000 ) {
+                return {
+                pane: 'pane_NumberofMPSStudentsbyResidence_1',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(63,0,125,1.0)',
+                interactive: false,
+            }
+            }
+        }
+        map.createPane('pane_NumberofMPSStudentsbyResidence_1');
+        map.getPane('pane_NumberofMPSStudentsbyResidence_1').style.zIndex = 401;
+        map.getPane('pane_NumberofMPSStudentsbyResidence_1').style['mix-blend-mode'] = 'normal';
+        var layer_NumberofMPSStudentsbyResidence_1 = new L.geoJson(json_NumberofMPSStudentsbyResidence_1, {
+            attribution: '',
+            interactive: false,
+            dataVar: 'json_NumberofMPSStudentsbyResidence_1',
+            layerName: 'layer_NumberofMPSStudentsbyResidence_1',
+            pane: 'pane_NumberofMPSStudentsbyResidence_1',
+            onEachFeature: pop_NumberofMPSStudentsbyResidence_1,
+            style: style_NumberofMPSStudentsbyResidence_1_0,
+        });
+        bounds_group.addLayer(layer_NumberofMPSStudentsbyResidence_1);
+        map.addLayer(layer_NumberofMPSStudentsbyResidence_1);
+        function pop_MPSSchools_2(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">School Name:</th>\
+                        <td>' + (feature.properties['School Name'] !== null ? autolinker.link(feature.properties['School Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Construction Year:</th>\
+                        <td>' + (feature.properties['Construction Year'] !== null ? autolinker.link(feature.properties['Construction Year'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Facility Status:</th>\
+                        <td>' + (feature.properties['MPS Owned'] !== null ? autolinker.link(feature.properties['MPS Owned'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Model:</th>\
+                        <td>' + (feature.properties['SchoolType'] !== null ? autolinker.link(feature.properties['SchoolType'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">FCI Cost/SQF:</th>\
+                        <td>' + (feature.properties['FCI Cost/SQF'] !== null ? autolinker.link(feature.properties['FCI Cost/SQF'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Building Condition:</th>\
+                        <td>' + (feature.properties['FCI Group'] !== null ? autolinker.link(feature.properties['FCI Group'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Utilization:</th>\
+                        <td>' + (feature.properties['Utilization Group'] !== null ? autolinker.link(feature.properties['Utilization Group'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">% Air Conditioned:</th>\
+                        <td>' + (feature.properties['AC Room Group'] !== null ? autolinker.link(feature.properties['AC Room Group'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Specialty Rooms - Right Mix:</th>\
+                        <td>' + (feature.properties['Specialty Rooms - Right Mix'] !== null ? autolinker.link(feature.properties['Specialty Rooms - Right Mix'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Resource Room - Right Mix:</th>\
+                        <td>' + (feature.properties['Resource Room - Right Mix'] !== null ? autolinker.link(feature.properties['Resource Room - Right Mix'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MPSSchools_2_0(feature) {
+            switch(String(feature.properties['Grouped School Levels'])) {
+                case 'Elementary School':
+                    return {
+                pane: 'pane_MPSSchools_2',
+                radius: 10.0,
+                opacity: 1,
+                color: 'rgba(255,255,255,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 4.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,83,13,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'High School':
+                    return {
+                pane: 'pane_MPSSchools_2',
+                radius: 10.0,
+                opacity: 1,
+                color: 'rgba(255,255,255,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 4.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(0,51,160,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'K-8':
+                    return {
+                pane: 'pane_MPSSchools_2',
+                radius: 10.0,
+                opacity: 1,
+                color: 'rgba(255,255,255,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 4.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(43,127,123,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'Middle School':
+                    return {
+                pane: 'pane_MPSSchools_2',
+                radius: 10.0,
+                opacity: 1,
+                color: 'rgba(255,255,255,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 4.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,199,44,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'Vacant':
+                    return {
+                pane: 'pane_MPSSchools_2',
+                radius: 10.0,
+                opacity: 1,
+                color: 'rgba(255,255,255,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 4.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(61,61,61,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_MPSSchools_2');
+        map.getPane('pane_MPSSchools_2').style.zIndex = 402;
+        map.getPane('pane_MPSSchools_2').style['mix-blend-mode'] = 'normal';
+        var layer_MPSSchools_2 = new L.geoJson(json_MPSSchools_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MPSSchools_2',
+            layerName: 'layer_MPSSchools_2',
+            pane: 'pane_MPSSchools_2',
+            onEachFeature: pop_MPSSchools_2,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_MPSSchools_2_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_MPSSchools_2);
+        map.addLayer(layer_MPSSchools_2);
+        var baseMaps = {};
+        var overlaysTree = [
+            {label: 'MPS Schools<br /><table><tr><td style="text-align: center;"><img src="legend/MPSSchools_2_ElementarySchool0.png" /></td><td>Elementary School</td></tr><tr><td style="text-align: center;"><img src="legend/MPSSchools_2_K8School2.png" /></td><td>K-8 School</td></tr><tr><td style="text-align: center;"><img src="legend/MPSSchools_2_MiddleSchool3.png" /></td><td>Middle School</td></tr><tr><td style="text-align: center;"><img src="legend/MPSSchools_2_HighSchool1.png" /></td><td>High School</td></tr><tr><td style="text-align: center;"><img src="legend/MPSSchools_2_VacantSchool4.png" /></td><td>Vacant School</td></tr></table>', layer: layer_MPSSchools_2},
+            {label: 'Number of MPS Students by Residence<br /><table><tr><td style="text-align: center;"><img src="legend/NumberofMPSStudentsbyResidence_1_7Students0.png" /></td><td><7 Students</td></tr><tr><td style="text-align: center;"><img src="legend/NumberofMPSStudentsbyResidence_1_721Students1.png" /></td><td>7-21 Students</td></tr><tr><td style="text-align: center;"><img src="legend/NumberofMPSStudentsbyResidence_1_2138Students2.png" /></td><td>21-38 Students</td></tr><tr><td style="text-align: center;"><img src="legend/NumberofMPSStudentsbyResidence_1_3862Students3.png" /></td><td>38-62 Students</td></tr><tr><td style="text-align: center;"><img src="legend/NumberofMPSStudentsbyResidence_1_62137Students4.png" /></td><td>62-137 Students</td></tr></table>', layer: layer_NumberofMPSStudentsbyResidence_1},
+            {label: "Basemap", layer: layer_Basemap_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        map.addControl(new L.Control.Search({
+            layer: layer_MPSSchools_2,
+            initial: false,
+            hideMarkerOnCollapse: true,
+            propertyName: 'School Name'}));
+        document.getElementsByClassName('search-button')[0].className +=
+         ' fa fa-binoculars';
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"Grouped School Levels": "str","SchoolType": "str","Utilization Group": "str","FCI Group": "str","AC Room Group": "str","Specialty Rooms - Right Mix": "str","Resource Room - Right Mix": "str"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_GroupedSchoolLevels = document.createElement('div');
+            div_GroupedSchoolLevels.id = "div_GroupedSchoolLevels";
+            div_GroupedSchoolLevels.className= "filterselect";
+            document.getElementById("menu").appendChild(div_GroupedSchoolLevels);
+            sel_GroupedSchoolLevels = document.createElement('select');
+            sel_GroupedSchoolLevels.multiple = true;
+            sel_GroupedSchoolLevels.size = 5;
+            sel_GroupedSchoolLevels.id = "sel_GroupedSchoolLevels";
+            var GroupedSchoolLevels_options_str = "";
+            sel_GroupedSchoolLevels.onchange = function(){filterFunc()};
+            GroupedSchoolLevels_options_str  += '<option value="Elementary School">Elementary School</option>';
+            GroupedSchoolLevels_options_str  += '<option value="K-8">K-8</option>';
+            GroupedSchoolLevels_options_str  += '<option value="Middle School">Middle School</option>';
+            GroupedSchoolLevels_options_str  += '<option value="High School">High School</option>';
+            GroupedSchoolLevels_options_str  += '<option value="Vacant">Vacant</option>';
+            sel_GroupedSchoolLevels.innerHTML = GroupedSchoolLevels_options_str;
+            div_GroupedSchoolLevels.appendChild(sel_GroupedSchoolLevels);
+            var lab_GroupedSchoolLevels = document.createElement('div');
+            lab_GroupedSchoolLevels.innerHTML = 'Grade Band';
+            lab_GroupedSchoolLevels.className = 'filterlabel';
+            div_GroupedSchoolLevels.appendChild(lab_GroupedSchoolLevels);
+            var reset_GroupedSchoolLevels = document.createElement('div');
+            reset_GroupedSchoolLevels.innerHTML = 'clear filter';
+            reset_GroupedSchoolLevels.className = 'filterlabel';
+            reset_GroupedSchoolLevels.onclick = function() {
+                var options = document.getElementById("sel_GroupedSchoolLevels").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_GroupedSchoolLevels.appendChild(reset_GroupedSchoolLevels);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_SchoolType = document.createElement('div');
+            div_SchoolType.id = "div_SchoolType";
+            div_SchoolType.className= "filterselect";
+            document.getElementById("menu").appendChild(div_SchoolType);
+            sel_SchoolType = document.createElement('select');
+            sel_SchoolType.multiple = true;
+            sel_SchoolType.size = 5;
+            sel_SchoolType.id = "sel_SchoolType";
+            var SchoolType_options_str = "";
+            sel_SchoolType.onchange = function(){filterFunc()};
+            SchoolType_options_str  += '<option value="Traditional">Traditional</option>';
+            SchoolType_options_str  += '<option value="Instrumentality">Instrumentality</option>';
+            SchoolType_options_str  += '<option value="Non-Instrumentality">Non-Instrumentality</option>';
+            SchoolType_options_str  += '<option value="Partnership">Partnership</option>';
+            SchoolType_options_str  += '<option value="Closed">Closed</option>';
+            sel_SchoolType.innerHTML = SchoolType_options_str;
+            div_SchoolType.appendChild(sel_SchoolType);
+            var lab_SchoolType = document.createElement('div');
+            lab_SchoolType.innerHTML = 'School Model';
+            lab_SchoolType.className = 'filterlabel';
+            div_SchoolType.appendChild(lab_SchoolType);
+            var reset_SchoolType = document.createElement('div');
+            reset_SchoolType.innerHTML = 'clear filter';
+            reset_SchoolType.className = 'filterlabel';
+            reset_SchoolType.onclick = function() {
+                var options = document.getElementById("sel_SchoolType").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_SchoolType.appendChild(reset_SchoolType);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_UtilizationGroup = document.createElement('div');
+            div_UtilizationGroup.id = "div_UtilizationGroup";
+            div_UtilizationGroup.className= "filterselect";
+            document.getElementById("menu").appendChild(div_UtilizationGroup);
+            sel_UtilizationGroup = document.createElement('select');
+            sel_UtilizationGroup.multiple = true;
+            sel_UtilizationGroup.size = 5;
+            sel_UtilizationGroup.id = "sel_UtilizationGroup";
+            var UtilizationGroup_options_str = "";
+            sel_UtilizationGroup.onchange = function(){filterFunc()};
+            UtilizationGroup_options_str  += '<option value="High">High</option>';
+            UtilizationGroup_options_str  += '<option value="Good">Good</option>';
+            UtilizationGroup_options_str  += '<option value="Low">Low</option>';
+            UtilizationGroup_options_str  += '<option value="Very Low">Very Low</option>';
+            UtilizationGroup_options_str  += '<option value="No Data">No Data</option>';
+            sel_UtilizationGroup.innerHTML = UtilizationGroup_options_str;
+            div_UtilizationGroup.appendChild(sel_UtilizationGroup);
+            var lab_UtilizationGroup = document.createElement('div');
+            lab_UtilizationGroup.innerHTML = 'Utilization';
+            lab_UtilizationGroup.className = 'filterlabel';
+            div_UtilizationGroup.appendChild(lab_UtilizationGroup);
+            var reset_UtilizationGroup = document.createElement('div');
+            reset_UtilizationGroup.innerHTML = 'clear filter';
+            reset_UtilizationGroup.className = 'filterlabel';
+            reset_UtilizationGroup.onclick = function() {
+                var options = document.getElementById("sel_UtilizationGroup").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_UtilizationGroup.appendChild(reset_UtilizationGroup);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_FCIGroup = document.createElement('div');
+            div_FCIGroup.id = "div_FCIGroup";
+            div_FCIGroup.className= "filterselect";
+            document.getElementById("menu").appendChild(div_FCIGroup);
+            sel_FCIGroup = document.createElement('select');
+            sel_FCIGroup.multiple = true;
+            sel_FCIGroup.size = 5;
+            sel_FCIGroup.id = "sel_FCIGroup";
+            var FCIGroup_options_str = "";
+            sel_FCIGroup.onchange = function(){filterFunc()};
+            FCIGroup_options_str  += '<option value="Great">Great</option>';
+            FCIGroup_options_str  += '<option value="Good">Good</option>';
+            FCIGroup_options_str  += '<option value="Fair">Fair</option>';
+            FCIGroup_options_str  += '<option value="Poor">Poor</option>';
+            FCIGroup_options_str  += '<option value="No Data">No Data</option>';
+            sel_FCIGroup.innerHTML = FCIGroup_options_str;
+            div_FCIGroup.appendChild(sel_FCIGroup);
+            var lab_FCIGroup = document.createElement('div');
+            lab_FCIGroup.innerHTML = 'Building Condition';
+            lab_FCIGroup.className = 'filterlabel';
+            div_FCIGroup.appendChild(lab_FCIGroup);
+            var reset_FCIGroup = document.createElement('div');
+            reset_FCIGroup.innerHTML = 'clear filter';
+            reset_FCIGroup.className = 'filterlabel';
+            reset_FCIGroup.onclick = function() {
+                var options = document.getElementById("sel_FCIGroup").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_FCIGroup.appendChild(reset_FCIGroup);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_ACRoomGroup = document.createElement('div');
+            div_ACRoomGroup.id = "div_ACRoomGroup";
+            div_ACRoomGroup.className= "filterselect";
+            document.getElementById("menu").appendChild(div_ACRoomGroup);
+            sel_ACRoomGroup = document.createElement('select');
+            sel_ACRoomGroup.multiple = true;
+            sel_ACRoomGroup.size = 5;
+            sel_ACRoomGroup.id = "sel_ACRoomGroup";
+            var ACRoomGroup_options_str = "";
+            sel_ACRoomGroup.onchange = function(){filterFunc()};
+            ACRoomGroup_options_str  += '<option value="0-25%">0-25%</option>';
+            ACRoomGroup_options_str  += '<option value="25%-50%">25%-50%</option>';
+            ACRoomGroup_options_str  += '<option value="50%-75%">50%-75%</option>';
+            ACRoomGroup_options_str  += '<option value="75%-100%">75%-100%</option>';
+            ACRoomGroup_options_str  += '<option value="No Data">No Data</option>';
+            sel_ACRoomGroup.innerHTML = ACRoomGroup_options_str;
+            div_ACRoomGroup.appendChild(sel_ACRoomGroup);
+            var lab_ACRoomGroup = document.createElement('div');
+            lab_ACRoomGroup.innerHTML = '% Air Conditioned';
+            lab_ACRoomGroup.className = 'filterlabel';
+            div_ACRoomGroup.appendChild(lab_ACRoomGroup);
+            var reset_ACRoomGroup = document.createElement('div');
+            reset_ACRoomGroup.innerHTML = 'clear filter';
+            reset_ACRoomGroup.className = 'filterlabel';
+            reset_ACRoomGroup.onclick = function() {
+                var options = document.getElementById("sel_ACRoomGroup").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_ACRoomGroup.appendChild(reset_ACRoomGroup);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_SpecialtyRoomsRightMix = document.createElement('div');
+            div_SpecialtyRoomsRightMix.id = "div_SpecialtyRoomsRightMix";
+            div_SpecialtyRoomsRightMix.className= "filterselect";
+            document.getElementById("menu").appendChild(div_SpecialtyRoomsRightMix);
+            sel_SpecialtyRoomsRightMix = document.createElement('select');
+            sel_SpecialtyRoomsRightMix.multiple = true;
+            sel_SpecialtyRoomsRightMix.size = 3;
+            sel_SpecialtyRoomsRightMix.id = "sel_SpecialtyRoomsRightMix";
+            var SpecialtyRoomsRightMix_options_str = "";
+            sel_SpecialtyRoomsRightMix.onchange = function(){filterFunc()};
+            SpecialtyRoomsRightMix_options_str  += '<option value="Yes">Yes</option>';
+            SpecialtyRoomsRightMix_options_str  += '<option value="No">No</option>';
+            SpecialtyRoomsRightMix_options_str  += '<option value="No Data">No Data</option>';
+            sel_SpecialtyRoomsRightMix.innerHTML = SpecialtyRoomsRightMix_options_str;
+            div_SpecialtyRoomsRightMix.appendChild(sel_SpecialtyRoomsRightMix);
+            var lab_SpecialtyRoomsRightMix = document.createElement('div');
+            lab_SpecialtyRoomsRightMix.innerHTML = '2+ Speciality Classrooms';
+            lab_SpecialtyRoomsRightMix.className = 'filterlabel';
+            div_SpecialtyRoomsRightMix.appendChild(lab_SpecialtyRoomsRightMix);
+            var reset_SpecialtyRoomsRightMix = document.createElement('div');
+            reset_SpecialtyRoomsRightMix.innerHTML = 'clear filter';
+            reset_SpecialtyRoomsRightMix.className = 'filterlabel';
+            reset_SpecialtyRoomsRightMix.onclick = function() {
+                var options = document.getElementById("sel_SpecialtyRoomsRightMix").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_SpecialtyRoomsRightMix.appendChild(reset_SpecialtyRoomsRightMix);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_ResourceRoomRightMix = document.createElement('div');
+            div_ResourceRoomRightMix.id = "div_ResourceRoomRightMix";
+            div_ResourceRoomRightMix.className= "filterselect";
+            document.getElementById("menu").appendChild(div_ResourceRoomRightMix);
+            sel_ResourceRoomRightMix = document.createElement('select');
+            sel_ResourceRoomRightMix.multiple = true;
+            sel_ResourceRoomRightMix.size = 3;
+            sel_ResourceRoomRightMix.id = "sel_ResourceRoomRightMix";
+            var ResourceRoomRightMix_options_str = "";
+            sel_ResourceRoomRightMix.onchange = function(){filterFunc()};
+            ResourceRoomRightMix_options_str  += '<option value="Yes">Yes</option>';
+            ResourceRoomRightMix_options_str  += '<option value="No">No</option>';
+            ResourceRoomRightMix_options_str  += '<option value="No Data">No Data</option>';
+            sel_ResourceRoomRightMix.innerHTML = ResourceRoomRightMix_options_str;
+            div_ResourceRoomRightMix.appendChild(sel_ResourceRoomRightMix);
+            var lab_ResourceRoomRightMix = document.createElement('div');
+            lab_ResourceRoomRightMix.innerHTML = 'Parent Resource Room';
+            lab_ResourceRoomRightMix.className = 'filterlabel';
+            div_ResourceRoomRightMix.appendChild(lab_ResourceRoomRightMix);
+            var reset_ResourceRoomRightMix = document.createElement('div');
+            reset_ResourceRoomRightMix.innerHTML = 'clear filter';
+            reset_ResourceRoomRightMix.className = 'filterlabel';
+            reset_ResourceRoomRightMix.onclick = function() {
+                var options = document.getElementById("sel_ResourceRoomRightMix").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_ResourceRoomRightMix.appendChild(reset_ResourceRoomRightMix);
+        </script>
+    </body>
+</html>
